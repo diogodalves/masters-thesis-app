@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Face Detection</title>
+</head>
+<body>
+    <div>
+        <canvas id="canvas" width="640" height="480"></canvas>
+    </div>
+    <script>
+        var canvas = document.getElementById('canvas');
+        var context = canvas.getContext('2d');
+        var ws = new WebSocket('ws://' + window.location.host + '/camera/ws');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                var video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+
+                video.addEventListener('play', function () {
+                    setInterval(() => {
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        var data = canvas.toDataURL('image/jpeg');
+                        ws.send(data);
+                    }, 100);
+                });
+            });
+
+        ws.onmessage = function (event) {
+            var image = new Image();
+            image.onload = function() {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.drawImage(image, 0, 0, 640, 480);
+            };
+            image.src = event.data;
+        };
+
+        ws.onerror = function (error) {
+            console.error("WebSocket Error: ", error);
+        };
+    </script>
+</body>
+</html>
