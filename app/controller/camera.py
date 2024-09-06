@@ -1,22 +1,16 @@
 import time
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, Depends
 import cv2
 import numpy as np
 import base64
 from collections import deque, Counter
 
-from domain.sentiment_analyzer import InferencePipeline
+from app.domain.sentiment_analyzer import get_inference_pipeline
+from app.domain.face_detector import get_haar_cascade
+
 from PIL import Image
 
 router = APIRouter()
-
-haar_cascade = cv2.CascadeClassifier('models/face_detection/haarcascade_frontalface_default.xml')
-
-best_model_path = "models/sentiment_analysis/distilled_lottery_ticket_590k.pt"
-label_encoder_path = "models/sentiment_analysis/label_encoder.pkl"
-
-pipeline = InferencePipeline(model_path=best_model_path,
-                             label_encoder_path=label_encoder_path)
 
 buffer_size = 25
 face_history = deque(maxlen=buffer_size)
@@ -30,7 +24,9 @@ MAX_NO_FACE_FRAMES = 10
 interpolation_alpha = 0.5
 
 @router.websocket("/camera/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket,
+                             pipeline = Depends(get_inference_pipeline),
+                             haar_cascade = Depends(get_haar_cascade)):
     global last_detected_face, interpolated_face, no_face_frame_count
 
     await websocket.accept()
@@ -53,7 +49,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if len(faces) > 0:
                 no_face_frame_count = 0
-                
+
                 largest_face = max(faces, key=lambda rect: rect[2] * rect[3])
                 x, y, w, h = [int(coord / scaling_factor) for coord in largest_face]
 
@@ -105,7 +101,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 inference_time_text = f"Avg Inference Time: {average_inference_time:.2f}s"
 
                 font_scale = 0.5
-                thickness = 2
+                thickness = 1
 
                 cv2.putText(img, label_text, (x, y - 50), cv2.FONT_HERSHEY_SIMPLEX, font_scale, box_color, thickness)
                 cv2.putText(img, confidence_text, (x, y - 30), cv2.FONT_HERSHEY_SIMPLEX, font_scale, box_color, thickness)
@@ -124,4 +120,4 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"Error: {e}")
     finally:
         await websocket.close()
-        # cv2.destroyAllWindows() 
+        # cv2.destroyAllWindows()

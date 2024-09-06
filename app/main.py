@@ -1,18 +1,6 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from router.router import router as app_router
-from fastapi.middleware.cors import CORSMiddleware
+"""Main module for the FastAPI application."""
+import uvicorn
+from app.application import app
 
-app = FastAPI()
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-app.include_router(app_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if __name__ == '__main__':
+    uvicorn.run(app, host='0.0.0.0', port=8001, log_level='info')

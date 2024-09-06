@@ -46,12 +46,18 @@ class InferencePipeline:
         return predicted_label[0], confidence.item()
 
 
-
-
-
 def MobileNetV3(num_labels=7):
     mobilenet_v3_small = models.mobilenet_v3_small(pretrained=False)
     mobilenet_v3_small.classifier[3] = torch.nn.Linear(mobilenet_v3_small.classifier[3].in_features,
                                                        num_labels)
     mobilenet_v3_small.train()
     return mobilenet_v3_small
+
+
+def init_inference_pipeline(model_path,label_encoder_path) -> None:
+    global MODEL
+    MODEL = InferencePipeline(model_path,label_encoder_path)
+
+
+def get_inference_pipeline():
+    return MODEL
