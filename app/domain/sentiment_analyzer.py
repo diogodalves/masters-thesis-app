@@ -33,16 +33,13 @@ class InferencePipeline:
         return image.unsqueeze(0)
 
     def predict_pil_image(self, pil_image):
-        # Preprocess the PIL image directly (no need to save to disk)
         image = self.preprocess_pil_image(pil_image)
 
         with torch.no_grad():
             output = self.model(image)
 
-            # Apply softmax to get probabilities
             probabilities = F.softmax(output, dim=1)
 
-            # Get the predicted class index and its associated confidence
             confidence, predicted_idx = torch.max(probabilities, 1)
 
         predicted_label = self.label_encoder.inverse_transform([predicted_idx.item()])

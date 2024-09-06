@@ -13,30 +13,44 @@
         var context = canvas.getContext('2d');
         var ws = new WebSocket('ws://' + window.location.host + '/camera/ws');
 
+        // Request the user's webcam stream
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 var video = document.createElement('video');
                 video.srcObject = stream;
                 video.play();
 
+                // Use setInterval to send frames to the server every 100ms
                 video.addEventListener('play', function () {
                     setInterval(() => {
                         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        var data = canvas.toDataURL('image/jpeg');
-                        ws.send(data);
-                    }, 100);
+                        var data = canvas.toDataURL('image/jpeg'); // Get image as base64
+                        ws.send(data);  // Send the frame to the WebSocket server
+                    }, 33);  // Send frame every 100ms
                 });
             });
 
+        // Handle receiving and displaying the processed frame from the WebSocket
         ws.onmessage = function (event) {
-            var image = new Image();
-            image.onload = function() {
-                context.clearRect(0, 0, canvas.width, canvas.height);
-                context.drawImage(image, 0, 0, 640, 480);
-            };
-            image.src = event.data;
+            var receivedData = event.data;
+
+            // Ensure the received data starts with the correct format
+            if (receivedData.startsWith('data:image/jpeg;base64,')) {
+                var base64Image = receivedData.split(',')[1];  // Extract the base64 part
+
+                var image = new Image();  // Create a new image object
+                image.onload = function() {
+                    // Clear the canvas and draw the new frame from the server
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);  // Draw at full canvas size
+                };
+
+                // Set the image source to the base64 data from the server
+                image.src = 'data:image/jpeg;base64,' + base64Image;
+            }
         };
 
+        // Handle WebSocket errors
         ws.onerror = function (error) {
             console.error("WebSocket Error: ", error);
         };
